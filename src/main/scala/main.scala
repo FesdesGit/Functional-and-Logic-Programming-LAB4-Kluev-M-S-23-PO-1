@@ -45,13 +45,6 @@ trait Monad3[M[_]] {
     a => flatten(map(f1(a))(f2))
 }
 
-// ---------- Блок 0: монады ----------
-/*trait Monad[M[_]] {
-  def pure[A](a: A): M[A]
-  def flatMap[A, B](ma: M[A])(f: A => M[B]): M[B]
-  def map[A, B](ma: M[A])(f: A => B): M[B] = flatMap(ma)(a => pure(f(a)))
-}*/
-
 // Monoid для логов
 trait Monoid[L]:
   def unit: L
@@ -61,7 +54,6 @@ given Monoid[Vector[String]] with
   def unit = Vector.empty
   def combine(a: Vector[String], b: Vector[String]) = a ++ b
 
-// Reader
 case class Reader[Env, A](run: Env => A) {
   def map[B](f: A => B): Reader[Env, B] = Reader(e => f(run(e)))
   def flatMap[B](f: A => Reader[Env, B]): Reader[Env, B] = Reader(e => f(run(e)).run(e))
@@ -71,7 +63,6 @@ object Reader {
   def ask[Env]: Reader[Env, Env] = Reader(identity)
 }
 
-// Writer
 case class Writer[Log, A](run: (Log, A)) {
   def map[B](f: A => B): Writer[Log, B] = Writer((run._1, f(run._2)))
   def flatMap[B](f: A => Writer[Log, B])(using L: Monoid[Log]): Writer[Log, B] = {
@@ -88,7 +79,6 @@ object Writer {
 extension [L, A](w: Writer[L, A])
   def >>[B](mb: Writer[L, B])(using M: Monoid[L]): Writer[L, B] = w.flatMap(_ => mb)
 
-// State
 case class State[S, A](run: S => (S, A)) {
   def map[B](f: A => B): State[S, B] = State(s => { val (s2, a) = run(s); (s2, f(a)) })
   def flatMap[B](f: A => State[S, B]): State[S, B] = State(s => { val (s2, a) = run(s); f(a).run(s2) })
@@ -100,7 +90,6 @@ object State {
   def modify[S](f: S => S): State[S, Unit] = State(s => (f(s), ()))
 }
 
-// IO
 case class IO[A](unsafeRun: () => A) {
   def map[B](f: A => B): IO[B] = IO(() => f(unsafeRun()))
   def flatMap[B](f: A => IO[B]): IO[B] = IO(() => f(unsafeRun()).unsafeRun())
@@ -127,11 +116,9 @@ def lostTicketCost: Reader[Config, Double] = Reader(_.lostTicketPenalty)
 def bill(entryTime: Double, exitTime: Double): Reader[Config, Double] = parkingCost(exitTime - entryTime)
 def canEnter(freePlaces: Int): Reader[Config, Boolean] = Reader(config => freePlaces > 0)*/
 
-// ---------- Блок 2: лог ----------
 type Log = Vector[String]
 def log(msg: String): Writer[Log, Unit] = Writer.tell(Vector(msg))
 
-// ---------- Блок 3: состояние ----------
 case class ParkState(
                       occupiedSpaces: Set[Int],           // номера занятых мест (1..totalSpaces)
                       carToSpace: Map[String, Int],       // машина -> номер места
@@ -226,7 +213,6 @@ def nextHour(delta: Double): ParkingProgram[Either[String, Unit]] =
     )
   }
 
-// ---------- Блок 4: IO сценарий ----------
 object ParkingApp {
   def printLine(msg: String): IO[Unit] = IO(() => println(msg))
   def readLine: IO[String] = IO(() => StdIn.readLine())
