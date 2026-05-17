@@ -103,11 +103,11 @@ extension [A](io: IO[A])
   def *>[B](mb: IO[B]): IO[B] = io.flatMap(_ => mb)
 
 case class Config(
-                   totalSpaces: Int,
-                   ratePerHour: Double,
-                   lostTicketPenalty: Double,
-                   roundUp: Double => Long
-                 )
+  totalSpaces: Int,
+  ratePerHour: Double,
+  lostTicketPenalty: Double,
+  roundUp: Double => Long
+)
 
 /*def parkingCost(hours: Double): Reader[Config, Double] = Reader { config =>
   config.roundUp(hours).toDouble * config.ratePerHour
@@ -120,12 +120,12 @@ type Log = Vector[String]
 type Command = (String, ParkState, Config, Log) => IO[Unit]
 
 case class ParkState(
-                      occupiedSpaces: Set[Int],           // номера занятых мест (1..totalSpaces)
-                      carToSpace: Map[String, Int],       // машина -> номер места
-                      carMap: Map[String, Double],        // машина -> время въезда
-                      currentHour: Double,                // текущий час (используется при выезде)
-                      revenue: Double
-                    )
+  occupiedSpaces: Set[Int],           // номера занятых мест (1..totalSpaces)
+  carToSpace: Map[String, Int],       // машина -> номер места
+  carMap: Map[String, Double],        // машина -> время въезда
+  currentHour: Double,                // текущий час (используется при выезде)
+  revenue: Double
+)
 
 type ParkingProgram[A] = Reader[Config, Writer[Log, State[ParkState, A]]]
 
