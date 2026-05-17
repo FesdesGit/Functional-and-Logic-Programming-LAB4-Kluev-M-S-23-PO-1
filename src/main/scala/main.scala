@@ -118,7 +118,6 @@ def canEnter(freePlaces: Int): Reader[Config, Boolean] = Reader(config => freePl
 
 type Log = Vector[String]
 type Command = (String, ParkState, Config, Log) => IO[Unit]
-def log(msg: String): Writer[Log, Unit] = Writer.tell(Vector(msg))
 
 case class ParkState(
                       occupiedSpaces: Set[Int],           // номера занятых мест (1..totalSpaces)
