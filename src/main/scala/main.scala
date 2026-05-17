@@ -117,6 +117,7 @@ def bill(entryTime: Double, exitTime: Double): Reader[Config, Double] = parkingC
 def canEnter(freePlaces: Int): Reader[Config, Boolean] = Reader(config => freePlaces > 0)*/
 
 type Log = Vector[String]
+type Command = (String, ParkState, Config, Log) => IO[Unit]
 def log(msg: String): Writer[Log, Unit] = Writer.tell(Vector(msg))
 
 case class ParkState(
@@ -311,19 +312,28 @@ object ParkingApp {
       printLine(extraMsg) *> loop(newState, config, logAcc ++ log ++ Vector(extraMsg))
     }
 
+  val commandMap: Map[String, Command] = Map(
+    "enter" -> ((cn, s, c, l) => handleEnter(cn, s, c, l)),
+    "exit" -> ((cn, s, c, l) => handleExit(cn, s, c, l)),
+    "lost" -> ((cn, s, c, l) => handleLost(cn, s, c, l)),
+    "next" -> ((_, s, c, l) => handleNext(s, c, l)),
+    "quit" -> ((_, s, c, l) => writeLogToFile(l) *> printLine("Логи сохранены в parking.log"))
+  )
+
+  def unknownCommand(state: ParkState, config: Config, logAcc: Vector[String]): Command = (_, s, c, l) =>
+    printLine("Неизвестная команда") *> loop(s, c, l)
+
+  def getCommand(action: String, state: ParkState, config: Config, logAcc: Log): Command =
+    commandMap.getOrElse(action, unknownCommand(state, config, logAcc))
+
   def loop(state: ParkState, config: Config, logAcc: Vector[String]): IO[Unit] =
     for {
       carNumber <- readCarNumber
-      _ <- printLine("Действие (enter/exit/lost/next/quit):")
+      commandsStr = commandMap.keys.toList.sorted.mkString("/")
+      _ <- printLine(s"Действие ($commandsStr):")
       action <- readLine.map(_.toLowerCase)
-      _ <- action match {
-        case "enter" => handleEnter(carNumber, state, config, logAcc)
-        case "exit" => handleExit(carNumber, state, config, logAcc)
-        case "lost" => handleLost(carNumber, state, config, logAcc)
-        case "next" => handleNext(state, config, logAcc)
-        case "quit" => writeLogToFile(logAcc) *> printLine("Логи сохранены в parking.log")
-        case _ => printLine("Неизвестная команда") *> loop(state, config, logAcc)
-      }
+      cmd = getCommand(action, state, config, logAcc)
+      _ <- cmd(carNumber, state, config, logAcc)
     } yield ()
 
   def run(): IO[Unit] = {
@@ -335,4 +345,5 @@ object ParkingApp {
   @main
   def main(): Unit = run().runNow()
 }
+
 
